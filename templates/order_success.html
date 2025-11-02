@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Order Success - SecretsClan{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+                    
+                    <h2 class="text-success mb-3">Order Placed Successfully!</h2>
+                    
+                    <p class="lead mb-4">
+                        Thank you, <strong>{{ customer_name }}</strong>! Your order has been received.
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> Order Details</h5>
+                        <hr>
+                        <div class="row text-start">
+                            <div class="col-6">
+                                <strong>Order ID:</strong>
+                            </div>
+                            <div class="col-6">
+                                #{{ order.id }}
+                            </div>
+                        </div>
+                        <div class="row text-start mt-2">
+                            <div class="col-6">
+                                <strong>Order Date:</strong>
+                            </div>
+                            <div class="col-6">
+                                {{ order.order_date.strftime('%B %d, %Y at %I:%M %p') }}
+                            </div>
+                        </div>
+                        <div class="row text-start mt-2">
+                            <div class="col-6">
+                                <strong>Total Amount:</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-success"><strong>Rs. {{ "%.2f"|format(order.total_price) }}</strong></span>
+                            </div>
+                        </div>
+                        <div class="row text-start mt-2">
+                            <div class="col-6">
+                                <strong>Payment Method:</strong>
+                            </div>
+                            <div class="col-6">
+                                {{ order.payment_method }}
+                            </div>
+                        </div>
+                        <div class="row text-start mt-2">
+                            <div class="col-6">
+                                <strong>Status:</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success mb-4">
+                        <i class="bi bi-envelope-check"></i> 
+                        A confirmation email has been sent to <strong>{{ order.email }}</strong>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-truck"></i> 
+                        Your order will be delivered to:<br>
+                        <strong>{{ order.address }}</strong>
+                    </div>
+                    
+                    <p class="text-muted mb-4">
+                        Our team will contact you on <strong>{{ order.phone }}</strong> if needed.
+                    </p>
+                    
+                    <div class="d-grid gap-2 col-md-6 mx-auto">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-house"></i> Continue Shopping
+                        </a>
+                        <a href="{{ url_for('products') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-bag"></i> View All Products
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    <i class="bi bi-question-circle"></i> 
+                    Need help? Contact us at <a href="mailto:secretsclanstore@gmail.com">secretsclanstore@gmail.com</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

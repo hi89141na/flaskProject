@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -74,3 +75,39 @@ class Cart(db.Model):
     def get_subtotal(self):
         """Calculate subtotal for this cart item"""
         return self.product.price * self.quantity
+
+
+class Order(db.Model):
+    """Order model for customer orders"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    address = db.Column(db.Text, nullable=False)
+    total_price = db.Column(db.Float, nullable=False)
+    payment_method = db.Column(db.String(50), default='COD')
+    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(50), default='Pending')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Optional: link to user if logged in
+    
+    # Relationship with OrderItems
+    order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Order {self.id} - {self.name}>'
+
+
+class OrderItem(db.Model):
+    """OrderItem model for items in an order"""
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    
+    def get_subtotal(self):
+        """Calculate subtotal for this order item"""
+        return self.price * self.quantity
+    
+    def __repr__(self):
+        return f'<OrderItem {self.product_name} x {self.quantity}>'

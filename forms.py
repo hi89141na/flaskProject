@@ -45,3 +45,11 @@ class ProductForm(FlaskForm):
 class CategoryForm(FlaskForm):
     """Form for adding/editing categories in admin panel"""
     name = StringField('Category Name', validators=[DataRequired(), Length(max=50)])
+
+
+class CheckoutForm(FlaskForm):
+    """Form for checkout process"""
+    name = StringField('Full Name', validators=[DataRequired(), Length(min=2, max=100)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    phone = StringField('Phone Number', validators=[DataRequired(), Length(min=10, max=20)])
+    address = TextAreaField('Delivery Address', validators=[DataRequired(), Length(min=10, max=500)])

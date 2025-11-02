@@ -1,16 +1,27 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from functools import wraps
+from datetime import datetime
 import os
-from models import db, User, Category, Product, Cart
-from forms import LoginForm, SignupForm, ProductForm, CategoryForm
+from models import db, User, Category, Product, Cart, Order, OrderItem
+from forms import LoginForm, SignupForm, ProductForm, CategoryForm, CheckoutForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here-change-in-production'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Email configuration (Gmail SMTP)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'secretsclanstore@gmail.com'  # Your Gmail address
+app.config['MAIL_PASSWORD'] = 'your-app-password-here'  # Use Gmail App Password
+app.config['MAIL_DEFAULT_SENDER'] = 'secretsclanstore@gmail.com'
+app.config['ADMIN_EMAIL'] = 'hinanadeem@gmail.com'  # Admin email for order notifications
 
 # File upload configuration
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
@@ -23,6 +34,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Initialize extensions
 db.init_app(app)
+mail = Mail(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -177,6 +189,211 @@ def remove_from_cart(cart_id):
     db.session.commit()
     flash('Item removed from cart.', 'success')
     return redirect(url_for('cart'))
+
+
+# ============ CHECKOUT AND ORDER ROUTES ============
+
+def send_order_emails(order, order_items):
+    """Send order confirmation emails to admin and customer"""
+    try:
+        # Prepare order items list for email
+        items_text = "\n".join([f"- {item.product_name} x {item.quantity} @ Rs. {item.price} = Rs. {item.get_subtotal()}" 
+                                for item in order_items])
+        
+        # Send email to admin
+        admin_msg = Message(
+            subject='New Order Received - SecretsClan',
+            recipients=[app.config['ADMIN_EMAIL']]
+        )
+        admin_msg.body = f"""
+A new order has been placed on SecretsClan.
+
+Order ID: #{order.id}
+Customer Name: {order.name}
+Email: {order.email}
+Phone: {order.phone}
+Delivery Address: {order.address}
+
+Order Items:
+{items_text}
+
+Total Amount: Rs. {order.total_price:.2f}
+Payment Method: {order.payment_method}
+Order Date: {order.order_date.strftime('%Y-%m-%d %H:%M:%S')}
+
+Please process this order as soon as possible.
+
+---
+SecretsClan Admin Panel
+        """
+        mail.send(admin_msg)
+        
+        # Send email to customer
+        customer_msg = Message(
+            subject='Your Order Confirmation - SecretsClan',
+            recipients=[order.email]
+        )
+        customer_msg.body = f"""
+Dear {order.name},
+
+Thank you for shopping with SecretsClan!
+
+Your order has been received and will be processed soon.
+
+Order Details:
+Order ID: #{order.id}
+Order Date: {order.order_date.strftime('%Y-%m-%d %H:%M:%S')}
+
+Order Items:
+{items_text}
+
+Total Amount: Rs. {order.total_price:.2f}
+Payment Method: {order.payment_method}
+
+Delivery Address:
+{order.address}
+
+Your order will be delivered to the above address. Our team will contact you on {order.phone} if needed.
+
+Thank you for choosing SecretsClan!
+
+Best Regards,
+SecretsClan Team
+        """
+        mail.send(customer_msg)
+        
+        return True
+    except Exception as e:
+        print(f"Error sending emails: {e}")
+        return False
+
+
+@app.route('/checkout')
+@login_required
+def checkout():
+    """Display checkout page"""
+    # Get cart items
+    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+    
+    if not cart_items:
+        flash('Your cart is empty. Add items before checking out.', 'warning')
+        return redirect(url_for('cart'))
+    
+    # Check if any products have been deleted
+    invalid_items = []
+    for item in cart_items:
+        if not item.product:
+            invalid_items.append(item)
+    
+    # Remove invalid items
+    if invalid_items:
+        for item in invalid_items:
+            db.session.delete(item)
+        db.session.commit()
+        flash('Some items in your cart were no longer available and have been removed.', 'warning')
+        cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+        
+        if not cart_items:
+            flash('Your cart is now empty.', 'warning')
+            return redirect(url_for('cart'))
+    
+    # Calculate total
+    total = sum(item.get_subtotal() for item in cart_items)
+    
+    # Pre-fill form with user data
+    form = CheckoutForm()
+    if not form.is_submitted():
+        form.name.data = current_user.name
+        form.email.data = current_user.email
+    
+    return render_template('checkout.html', form=form, cart_items=cart_items, total=total)
+
+
+@app.route('/place_order', methods=['POST'])
+@login_required
+def place_order():
+    """Process order and send confirmation emails"""
+    form = CheckoutForm()
+    
+    if form.validate_on_submit():
+        # Get cart items
+        cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+        
+        if not cart_items:
+            flash('Your cart is empty.', 'danger')
+            return redirect(url_for('cart'))
+        
+        # Calculate total
+        total = sum(item.get_subtotal() for item in cart_items)
+        
+        # Create order
+        order = Order(
+            name=form.name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            address=form.address.data,
+            total_price=total,
+            payment_method='COD',
+            status='Pending',
+            user_id=current_user.id
+        )
+        db.session.add(order)
+        db.session.flush()  # Get order ID
+        
+        # Create order items
+        order_items = []
+        for cart_item in cart_items:
+            order_item = OrderItem(
+                order_id=order.id,
+                product_name=cart_item.product.name,
+                quantity=cart_item.quantity,
+                price=cart_item.product.price
+            )
+            order_items.append(order_item)
+            db.session.add(order_item)
+        
+        # Clear cart
+        for cart_item in cart_items:
+            db.session.delete(cart_item)
+        
+        db.session.commit()
+        
+        # Send emails
+        email_sent = send_order_emails(order, order_items)
+        
+        if email_sent:
+            flash('Order placed successfully! Confirmation emails have been sent.', 'success')
+        else:
+            flash('Order placed successfully! However, there was an issue sending confirmation emails.', 'warning')
+        
+        # Store order details in session for success page
+        session['last_order_id'] = order.id
+        session['customer_name'] = order.name
+        
+        return redirect(url_for('order_success'))
+    
+    # If form validation fails
+    flash('Please fill in all required fields correctly.', 'danger')
+    return redirect(url_for('checkout'))
+
+
+@app.route('/order_success')
+@login_required
+def order_success():
+    """Display order success page"""
+    order_id = session.pop('last_order_id', None)
+    customer_name = session.pop('customer_name', current_user.name)
+    
+    if not order_id:
+        flash('No recent order found.', 'warning')
+        return redirect(url_for('index'))
+    
+    order = Order.query.get(order_id)
+    if not order:
+        flash('Order not found.', 'danger')
+        return redirect(url_for('index'))
+    
+    return render_template('order_success.html', order=order, customer_name=customer_name)
 
 
 # ============ AUTHENTICATION ROUTES ============
@@ -439,6 +656,42 @@ def admin_delete_user(id):
     db.session.commit()
     flash('User deleted successfully!', 'success')
     return redirect(url_for('admin_users'))
+
+
+# -------- ADMIN ORDERS --------
+
+@app.route('/admin/orders')
+@admin_required
+def admin_orders():
+    """View all orders"""
+    orders = Order.query.order_by(Order.order_date.desc()).all()
+    return render_template('admin/orders.html', orders=orders)
+
+
+@app.route('/admin/orders/<int:id>')
+@admin_required
+def admin_order_details(id):
+    """View order details"""
+    order = Order.query.get_or_404(id)
+    order_items = OrderItem.query.filter_by(order_id=id).all()
+    return render_template('admin/order_details.html', order=order, order_items=order_items)
+
+
+@app.route('/admin/orders/update_status/<int:id>', methods=['POST'])
+@admin_required
+def admin_update_order_status(id):
+    """Update order status"""
+    order = Order.query.get_or_404(id)
+    new_status = request.form.get('status')
+    
+    if new_status in ['Pending', 'Packed', 'Shipped', 'Delivered']:
+        order.status = new_status
+        db.session.commit()
+        flash(f'Order status updated to {new_status}.', 'success')
+    else:
+        flash('Invalid status.', 'danger')
+    
+    return redirect(url_for('admin_order_details', id=id))
 
 
 # ============ ERROR HANDLERS ============
