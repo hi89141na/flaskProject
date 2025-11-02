@@ -13,7 +13,7 @@
             <div class="card mb-3 shadow-sm">
                 <div class="row g-0">
                     <div class="col-md-3">
-                        <img src="{{ item.product.image_url }}" class="img-fluid rounded-start" alt="{{ item.product.name }}">
+                        <img src="{{ item.product.get_image_url() }}" class="img-fluid rounded-start" alt="{{ item.product.name }}">
                     </div>
                     <div class="col-md-9">
                         <div class="card-body">

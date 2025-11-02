@@ -47,7 +47,7 @@
                 <div class="col-lg-8">
                     <div class="card shadow">
                         <div class="card-body">
-                            <form method="POST">
+                            <form method="POST" enctype="multipart/form-data">
                                 {{ form.hidden_tag() }}
                                 
                                 <div class="mb-3">
@@ -80,17 +80,33 @@
                                     {% endif %}
                                 </div>
                                 
+                                <!-- Image Upload Section -->
                                 <div class="mb-3">
-                                    {{ form.image_url.label(class="form-label") }}
-                                    {{ form.image_url(class="form-control" + (" is-invalid" if form.image_url.errors else "")) }}
+                                    {{ form.image.label(class="form-label") }}
+                                    
+                                    {% if action == 'Edit' and product and product.image_filename %}
+                                    <div class="mb-2">
+                                        <p class="text-muted mb-1"><small>Current Image:</small></p>
+                                        <img src="{{ product.get_image_url() }}" alt="{{ product.name }}" 
+                                             class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {{ form.image(class="form-control" + (" is-invalid" if form.image.errors else ""), accept="image/jpeg,image/jpg,image/png", onchange="previewImage(event)") }}
                                     <small class="form-text text-muted">
-                                        Use placeholder URL like: https://via.placeholder.com/400x400.png?text=Product+Name
+                                        Upload JPG, JPEG, or PNG image (max 16MB). Leave empty to {% if action == 'Edit' %}keep current{% else %}use default placeholder{% endif %}.
                                     </small>
-                                    {% if form.image_url.errors %}
-                                        <div class="invalid-feedback">
-                                            {% for error in form.image_url.errors %}{{ error }}{% endfor %}
+                                    {% if form.image.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.image.errors %}{{ error }}{% endfor %}
                                         </div>
                                     {% endif %}
+                                    
+                                    <!-- Image Preview -->
+                                    <div id="imagePreview" class="mt-2" style="display: none;">
+                                        <p class="text-muted mb-1"><small>Preview:</small></p>
+                                        <img id="preview" src="" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                    </div>
                                 </div>
                                 
                                 <div class="mb-3">
@@ -115,4 +131,20 @@
         </main>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    }
+}
+</script>
 {% endblock %}

@@ -1,7 +1,9 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
 from functools import wraps
+import os
 from models import db, User, Category, Product, Cart
 from forms import LoginForm, SignupForm, ProductForm, CategoryForm
 
@@ -9,6 +11,15 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here-change-in-production'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# File upload configuration
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Ensure upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Initialize extensions
 db.init_app(app)
@@ -20,6 +31,27 @@ login_manager.login_message = 'Please log in to access this page.'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# Helper function to check allowed file extensions
+def allowed_file(filename):
+    """Check if file has an allowed extension"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# Helper function to delete image file
+def delete_image_file(filename):
+    """Delete image file from uploads folder"""
+    if filename and filename not in ['placeholder.png', 'placeholder.svg']:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                return True
+            except Exception as e:
+                print(f"Error deleting file: {e}")
+                return False
+    return False
+
 
 # Admin required decorator
 def admin_required(f):
@@ -237,11 +269,28 @@ def admin_add_product():
     form.category_id.choices = [(c.id, c.name) for c in Category.query.all()]
     
     if form.validate_on_submit():
+        # Handle file upload
+        image_filename = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                # Add timestamp to avoid filename conflicts
+                import time
+                timestamp = str(int(time.time()))
+                name, ext = os.path.splitext(filename)
+                filename = f"{name}_{timestamp}{ext}"
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                image_filename = filename
+            elif file and file.filename:
+                flash('Invalid file type. Only JPG, JPEG, and PNG are allowed.', 'danger')
+                return render_template('admin/product_form.html', form=form, action='Add')
+        
         product = Product(
             name=form.name.data,
             description=form.description.data,
             price=form.price.data,
-            image_url=form.image_url.data,
+            image_filename=image_filename,
             category_id=form.category_id.data
         )
         db.session.add(product)
@@ -261,17 +310,36 @@ def admin_edit_product(id):
     form.category_id.choices = [(c.id, c.name) for c in Category.query.all()]
     
     if form.validate_on_submit():
+        # Handle file upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                # Delete old image if exists
+                if product.image_filename:
+                    delete_image_file(product.image_filename)
+                
+                # Save new image
+                filename = secure_filename(file.filename)
+                import time
+                timestamp = str(int(time.time()))
+                name, ext = os.path.splitext(filename)
+                filename = f"{name}_{timestamp}{ext}"
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                product.image_filename = filename
+            elif file and file.filename:
+                flash('Invalid file type. Only JPG, JPEG, and PNG are allowed.', 'danger')
+                return render_template('admin/product_form.html', form=form, action='Edit', product=product)
+        
         product.name = form.name.data
         product.description = form.description.data
         product.price = form.price.data
-        product.image_url = form.image_url.data
         product.category_id = form.category_id.data
         
         db.session.commit()
         flash('Product updated successfully!', 'success')
         return redirect(url_for('admin_products'))
     
-    return render_template('admin/product_form.html', form=form, action='Edit')
+    return render_template('admin/product_form.html', form=form, action='Edit', product=product)
 
 
 @app.route('/admin/products/delete/<int:id>')
@@ -279,6 +347,11 @@ def admin_edit_product(id):
 def admin_delete_product(id):
     """Delete product"""
     product = Product.query.get_or_404(id)
+    
+    # Delete associated image file
+    if product.image_filename:
+        delete_image_file(product.image_filename)
+    
     db.session.delete(product)
     db.session.commit()
     flash('Product deleted successfully!', 'success')

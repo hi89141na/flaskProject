@@ -200,7 +200,7 @@ def init_database():
                 name=product_data["name"],
                 description=product_data["description"],
                 price=product_data["price"],
-                image_url=product_data["image_url"],
+                image_filename=None,  # Changed from image_url - will use placeholder
                 category_id=category.id
             )
             db.session.add(product)
@@ -222,6 +222,8 @@ def init_database():
         print(f"\nTotal Categories: {len(categories)}")
         print(f"Total Products: {len(products_data)}")
         print(f"Total Users: 2")
+        print("\nNote: Products created with placeholder images.")
+        print("You can upload real images through the admin panel.")
         print("\nYou can now run the application with: python app.py")
         print("="*50)
 

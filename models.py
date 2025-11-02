@@ -45,11 +45,17 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
     price = db.Column(db.Float, nullable=False)
-    image_url = db.Column(db.String(200), nullable=False)
+    image_filename = db.Column(db.String(200), nullable=True)  # Changed from image_url to image_filename
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     
     # Relationship with Cart
     cart_items = db.relationship('Cart', backref='product', lazy=True, cascade='all, delete-orphan')
+    
+    def get_image_url(self):
+        """Get the URL for the product image"""
+        if self.image_filename:
+            return f'/static/uploads/{self.image_filename}'
+        return '/static/uploads/placeholder.svg'
     
     def __repr__(self):
         return f'<Product {self.name}>'

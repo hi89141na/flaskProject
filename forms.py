@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, TextAreaField, FloatField, SelectField, BooleanField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError, Optional
 from models import User
 
 class LoginForm(FlaskForm):
@@ -34,7 +35,10 @@ class ProductForm(FlaskForm):
     name = StringField('Product Name', validators=[DataRequired(), Length(max=100)])
     description = TextAreaField('Description', validators=[DataRequired()])
     price = FloatField('Price', validators=[DataRequired()])
-    image_url = StringField('Image URL', validators=[DataRequired(), Length(max=200)])
+    image = FileField('Product Image', validators=[
+        Optional(),
+        FileAllowed(['jpg', 'jpeg', 'png'], 'Only JPG, JPEG, and PNG images are allowed!')
+    ])
     category_id = SelectField('Category', coerce=int, validators=[DataRequired()])
 
 
