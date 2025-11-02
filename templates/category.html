@@ -23,7 +23,7 @@
                     <h5 class="card-title">{{ product.name }}</h5>
                     <p class="card-text text-muted flex-grow-1">{{ product.description[:100] }}...</p>
                     <div class="d-flex justify-content-between align-items-center mt-3">
-                        <span class="h5 mb-0 text-primary">₹{{ "%.2f"|format(product.price) }}</span>
+                        <span class="h5 mb-0 text-primary">Rs. {{ "%.2f"|format(product.price) }}</span>
                         <a href="{{ url_for('product', id=product.id) }}" class="btn btn-outline-primary">View Details</a>
                     </div>
                 </div>
