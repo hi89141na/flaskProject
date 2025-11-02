@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}403 - Access Denied{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-content">
+                <h1 class="display-1 fw-bold text-danger">403</h1>
+                <h2 class="mb-4">Access Denied</h2>
+                <p class="lead text-muted mb-4">
+                    You don't have permission to access this page.
+                </p>
+                <i class="bi bi-shield-x text-danger" style="font-size: 5rem;"></i>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house"></i> Go to Homepage
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

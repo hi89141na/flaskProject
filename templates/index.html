@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section bg-gradient text-white py-5">
+    <div class="container text-center">
+        <h1 class="display-3 fw-bold mb-3">Welcome to SecretsClan</h1>
+        <p class="lead mb-4">Discover the finest collection of stylish accessories</p>
+        <a href="#categories" class="btn btn-light btn-lg">Shop Now</a>
+    </div>
+</div>
+
+<!-- Categories Section -->
+<section id="categories" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Shop by Category</h2>
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-md-4 col-sm-6">
+                <a href="{{ url_for('category', name=category.name) }}" class="text-decoration-none">
+                    <div class="card category-card h-100 text-center shadow-sm hover-lift">
+                        <div class="card-body">
+                            <div class="category-icon mb-3">
+                                {% if category.name == 'Perfumes' %}
+                                    <i class="bi bi-droplet fs-1 text-primary"></i>
+                                {% elif category.name == 'Keychains' %}
+                                    <i class="bi bi-key fs-1 text-success"></i>
+                                {% elif category.name == 'Wrist Watches' %}
+                                    <i class="bi bi-smartwatch fs-1 text-info"></i>
+                                {% elif category.name == 'Ties' %}
+                                    <i class="bi bi-bag fs-1 text-warning"></i>
+                                {% elif category.name == 'Hoodies' %}
+                                    <i class="bi bi-heart fs-1 text-danger"></i>
+                                {% elif category.name == 'Shirts' %}
+                                    <i class="bi bi-person fs-1 text-secondary"></i>
+                                {% else %}
+                                    <i class="bi bi-star fs-1 text-dark"></i>
+                                {% endif %}
+                            </div>
+                            <h4 class="card-title">{{ category.name }}</h4>
+                            <p class="text-muted">Explore {{ category.name.lower() }}</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">Featured Products</h2>
+        <div class="row g-4">
+            {% for product in products %}
+            <div class="col-md-4 col-sm-6">
+                <div class="card product-card h-100 shadow-sm hover-lift">
+                    <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body d-flex flex-column">
+                        <span class="badge bg-secondary mb-2 align-self-start">{{ product.category.name }}</span>
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text text-muted flex-grow-1">{{ product.description[:80] }}...</p>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="h5 mb-0 text-primary">₹{{ "%.2f"|format(product.price) }}</span>
+                            <a href="{{ url_for('product', id=product.id) }}" class="btn btn-outline-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Why Choose Us Section -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Why Choose SecretsClan?</h2>
+        <div class="row g-4 text-center">
+            <div class="col-md-3 col-sm-6">
+                <div class="feature-box p-4">
+                    <i class="bi bi-truck fs-1 text-primary mb-3"></i>
+                    <h5>Free Shipping</h5>
+                    <p class="text-muted">On orders over ₹1000</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="feature-box p-4">
+                    <i class="bi bi-shield-check fs-1 text-success mb-3"></i>
+                    <h5>Secure Payment</h5>
+                    <p class="text-muted">100% secure transactions</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="feature-box p-4">
+                    <i class="bi bi-arrow-repeat fs-1 text-info mb-3"></i>
+                    <h5>Easy Returns</h5>
+                    <p class="text-muted">30-day return policy</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="feature-box p-4">
+                    <i class="bi bi-headset fs-1 text-warning mb-3"></i>
+                    <h5>24/7 Support</h5>
+                    <p class="text-muted">Dedicated customer service</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
