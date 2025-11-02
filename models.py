@@ -93,6 +93,32 @@ class Order(db.Model):
     # Relationship with OrderItems
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
     
+    def can_be_cancelled(self):
+        """Check if order can be cancelled (within 24 hours and status is Pending)"""
+        if self.status != 'Pending':
+            return False
+        
+        # Check if order is within 24 hours
+        from datetime import timedelta
+        time_elapsed = datetime.utcnow() - self.order_date
+        return time_elapsed < timedelta(hours=24)
+    
+    def calculate_total(self):
+        """Calculate total amount from order items"""
+        return sum(item.get_subtotal() for item in self.order_items)
+    
+    def get_status_badge_class(self):
+        """Get Bootstrap badge class for order status"""
+        status_classes = {
+            'Pending': 'bg-warning text-dark',
+            'Processing': 'bg-info',
+            'Packed': 'bg-info',
+            'Shipped': 'bg-primary',
+            'Delivered': 'bg-success',
+            'Cancelled': 'bg-danger'
+        }
+        return status_classes.get(self.status, 'bg-secondary')
+    
     def __repr__(self):
         return f'<Order {self.id} - {self.name}>'
 

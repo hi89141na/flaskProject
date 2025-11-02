@@ -48,6 +48,12 @@
                             </a>
                         </li>
                         
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('orders.my_orders') }}">
+                                <i class="bi bi-box-seam"></i> My Orders
+                            </a>
+                        </li>
+                        
                         {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('admin_dashboard') }}">

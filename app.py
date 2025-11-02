@@ -19,9 +19,9 @@ app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'secretsclanstore@gmail.com'  # Your Gmail address
-app.config['MAIL_PASSWORD'] = 'your-app-password-here'  # Use Gmail App Password
+app.config['MAIL_PASSWORD'] = 'admin123'  # Use Gmail App Password
 app.config['MAIL_DEFAULT_SENDER'] = 'secretsclanstore@gmail.com'
-app.config['ADMIN_EMAIL'] = 'hinanadeem@gmail.com'  # Admin email for order notifications
+app.config['ADMIN_EMAIL'] = 'hi89141na@gmail.com'  # Admin email for order notifications
 
 # File upload configuration
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
@@ -39,6 +39,10 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
+
+# Register blueprints
+from routes import orders_bp
+app.register_blueprint(orders_bp)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -193,79 +197,12 @@ def remove_from_cart(cart_id):
 
 # ============ CHECKOUT AND ORDER ROUTES ============
 
+# Import email service
+from utils.email_service import send_order_confirmation
+
 def send_order_emails(order, order_items):
-    """Send order confirmation emails to admin and customer"""
-    try:
-        # Prepare order items list for email
-        items_text = "\n".join([f"- {item.product_name} x {item.quantity} @ Rs. {item.price} = Rs. {item.get_subtotal()}" 
-                                for item in order_items])
-        
-        # Send email to admin
-        admin_msg = Message(
-            subject='New Order Received - SecretsClan',
-            recipients=[app.config['ADMIN_EMAIL']]
-        )
-        admin_msg.body = f"""
-A new order has been placed on SecretsClan.
-
-Order ID: #{order.id}
-Customer Name: {order.name}
-Email: {order.email}
-Phone: {order.phone}
-Delivery Address: {order.address}
-
-Order Items:
-{items_text}
-
-Total Amount: Rs. {order.total_price:.2f}
-Payment Method: {order.payment_method}
-Order Date: {order.order_date.strftime('%Y-%m-%d %H:%M:%S')}
-
-Please process this order as soon as possible.
-
----
-SecretsClan Admin Panel
-        """
-        mail.send(admin_msg)
-        
-        # Send email to customer
-        customer_msg = Message(
-            subject='Your Order Confirmation - SecretsClan',
-            recipients=[order.email]
-        )
-        customer_msg.body = f"""
-Dear {order.name},
-
-Thank you for shopping with SecretsClan!
-
-Your order has been received and will be processed soon.
-
-Order Details:
-Order ID: #{order.id}
-Order Date: {order.order_date.strftime('%Y-%m-%d %H:%M:%S')}
-
-Order Items:
-{items_text}
-
-Total Amount: Rs. {order.total_price:.2f}
-Payment Method: {order.payment_method}
-
-Delivery Address:
-{order.address}
-
-Your order will be delivered to the above address. Our team will contact you on {order.phone} if needed.
-
-Thank you for choosing SecretsClan!
-
-Best Regards,
-SecretsClan Team
-        """
-        mail.send(customer_msg)
-        
-        return True
-    except Exception as e:
-        print(f"Error sending emails: {e}")
-        return False
+    """Send order confirmation emails to admin and customer (wrapper for email_service)"""
+    return send_order_confirmation(mail, order, order_items)
 
 
 @app.route('/checkout')
@@ -388,13 +325,15 @@ def order_success():
         flash('No recent order found.', 'warning')
         return redirect(url_for('index'))
     
-    order = Order.query.get(order_id)
+    order = db.session.get(Order, order_id)
     if not order:
         flash('Order not found.', 'danger')
         return redirect(url_for('index'))
     
     return render_template('order_success.html', order=order, customer_name=customer_name)
 
+
+# User order routes moved to routes/orders.py blueprint
 
 # ============ AUTHENTICATION ROUTES ============
 
@@ -659,39 +598,7 @@ def admin_delete_user(id):
 
 
 # -------- ADMIN ORDERS --------
-
-@app.route('/admin/orders')
-@admin_required
-def admin_orders():
-    """View all orders"""
-    orders = Order.query.order_by(Order.order_date.desc()).all()
-    return render_template('admin/orders.html', orders=orders)
-
-
-@app.route('/admin/orders/<int:id>')
-@admin_required
-def admin_order_details(id):
-    """View order details"""
-    order = Order.query.get_or_404(id)
-    order_items = OrderItem.query.filter_by(order_id=id).all()
-    return render_template('admin/order_details.html', order=order, order_items=order_items)
-
-
-@app.route('/admin/orders/update_status/<int:id>', methods=['POST'])
-@admin_required
-def admin_update_order_status(id):
-    """Update order status"""
-    order = Order.query.get_or_404(id)
-    new_status = request.form.get('status')
-    
-    if new_status in ['Pending', 'Packed', 'Shipped', 'Delivered']:
-        order.status = new_status
-        db.session.commit()
-        flash(f'Order status updated to {new_status}.', 'success')
-    else:
-        flash('Invalid status.', 'danger')
-    
-    return redirect(url_for('admin_order_details', id=id))
+# Admin order routes moved to routes/orders.py blueprint
 
 
 # ============ ERROR HANDLERS ============
