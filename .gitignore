@@ -48,7 +48,9 @@ Thumbs.db
 
 # Environment variables
 .env
-.flaskenv
+*.md
+!README.md
+EMAIL_*.md
 
 # Logs
 *.log

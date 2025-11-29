@@ -6,6 +6,11 @@ from werkzeug.utils import secure_filename
 from functools import wraps
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from models import db, User, Category, Product, Cart, Order, OrderItem
 from forms import LoginForm, SignupForm, ProductForm, CategoryForm, CheckoutForm
 
@@ -15,13 +20,16 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Email configuration (Gmail SMTP)
+# ⚠️ IMPORTANT: Replace 'admin123' with your Gmail App Password (16 characters)
+# Generate at: https://myaccount.google.com/apppasswords
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'secretsclanstore@gmail.com'  # Your Gmail address
-app.config['MAIL_PASSWORD'] = 'admin123'  # Use Gmail App Password
-app.config['MAIL_DEFAULT_SENDER'] = 'secretsclanstore@gmail.com'
-app.config['ADMIN_EMAIL'] = 'hi89141na@gmail.com'  # Admin email for order notifications
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'secretsclanstore@gmail.com')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')  # Will load from .env
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', 'secretsclanstore@gmail.com')
+app.config['ADMIN_EMAIL'] = os.environ.get('ADMIN_EMAIL', 'hi89141na@gmail.com')
+app.config['BASE_URL'] = os.environ.get('BASE_URL', 'http://localhost:5000')
 
 # File upload configuration
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
@@ -200,9 +208,9 @@ def remove_from_cart(cart_id):
 # Import email service
 from utils.email_service import send_order_confirmation
 
-def send_order_emails(order, order_items):
+def send_order_emails(order, user):
     """Send order confirmation emails to admin and customer (wrapper for email_service)"""
-    return send_order_confirmation(mail, order, order_items)
+    return send_order_confirmation(mail, order, user)
 
 
 @app.route('/checkout')
@@ -295,8 +303,8 @@ def place_order():
         
         db.session.commit()
         
-        # Send emails
-        email_sent = send_order_emails(order, order_items)
+        # Send emails with user object instead of order_items
+        email_sent = send_order_emails(order, current_user)
         
         if email_sent:
             flash('Order placed successfully! Confirmation emails have been sent.', 'success')
@@ -599,6 +607,80 @@ def admin_delete_user(id):
 
 # -------- ADMIN ORDERS --------
 # Admin order routes moved to routes/orders.py blueprint
+
+
+# -------- ADMIN EMAIL TEST --------
+
+@app.route('/admin/test-email')
+@admin_required
+def admin_test_email():
+    """Test email configuration by sending a test email"""
+    try:
+        from flask_mail import Message
+        
+        # Log configuration (without password)
+        print("\n" + "="*60)
+        print("📧 EMAIL CONFIGURATION TEST")
+        print("="*60)
+        print(f"MAIL_SERVER: {app.config.get('MAIL_SERVER')}")
+        print(f"MAIL_PORT: {app.config.get('MAIL_PORT')}")
+        print(f"MAIL_USE_TLS: {app.config.get('MAIL_USE_TLS')}")
+        print(f"MAIL_USERNAME: {app.config.get('MAIL_USERNAME')}")
+        print(f"MAIL_PASSWORD: {'*' * len(app.config.get('MAIL_PASSWORD', ''))}")
+        print(f"MAIL_DEFAULT_SENDER: {app.config.get('MAIL_DEFAULT_SENDER')}")
+        print(f"ADMIN_EMAIL: {app.config.get('ADMIN_EMAIL')}")
+        print("="*60)
+        
+        # Create test message
+        msg = Message(
+            subject='🧪 SecretsClan Email Test - Configuration Successful',
+            sender=app.config.get('MAIL_DEFAULT_SENDER'),
+            recipients=[app.config.get('ADMIN_EMAIL')]
+        )
+        
+        msg.body = f"""
+🎉 SUCCESS! Email Configuration is Working!
+
+This is a test email from SecretsClan Order Management System.
+
+CONFIGURATION DETAILS:
+---------------------
+Mail Server: {app.config.get('MAIL_SERVER')}
+Mail Port: {app.config.get('MAIL_PORT')}
+TLS Enabled: {app.config.get('MAIL_USE_TLS')}
+Sender: {app.config.get('MAIL_DEFAULT_SENDER')}
+Admin Email: {app.config.get('ADMIN_EMAIL')}
+
+If you received this email, your email configuration is correct and all order emails will work properly!
+
+✅ Ready to send:
+  - Order confirmations
+  - Order status updates
+  - Cancellation notifications
+
+---
+SecretsClan Store
+Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}
+        """
+        
+        print("\n📤 Attempting to send test email...")
+        mail.send(msg)
+        print("✅ Test email sent successfully!")
+        print("="*60 + "\n")
+        
+        flash('✅ Test email sent successfully! Check your inbox at ' + app.config.get('ADMIN_EMAIL'), 'success')
+        
+    except Exception as e:
+        error_details = f"❌ Email test failed: {str(e)}"
+        print("\n" + error_details)
+        print("="*60 + "\n")
+        
+        import traceback
+        print(traceback.format_exc())
+        
+        flash(f'❌ Email test failed: {str(e)}. Check console for details.', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
 
 
 # ============ ERROR HANDLERS ============
