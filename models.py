@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
@@ -86,7 +86,7 @@ class Order(db.Model):
     address = db.Column(db.Text, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
     payment_method = db.Column(db.String(50), default='COD')
-    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    order_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     status = db.Column(db.String(50), default='Pending')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Optional: link to user if logged in
     
@@ -100,7 +100,7 @@ class Order(db.Model):
         
         # Check if order is within 24 hours
         from datetime import timedelta
-        time_elapsed = datetime.utcnow() - self.order_date
+        time_elapsed = datetime.now(timezone.utc) - self.order_date
         return time_elapsed < timedelta(hours=24)
     
     def calculate_total(self):
