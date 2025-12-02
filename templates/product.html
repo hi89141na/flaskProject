@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - SecretsClan{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('category', name=product.category.name) }}">{{ product.category.name }}</a></li>
+            <li class="breadcrumb-item active">{{ product.name }}</li>
+        </ol>
+    </nav>
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <img src="{{ product.get_image_url() }}" class="img-fluid rounded shadow" alt="{{ product.name }}">
+        </div>
+        
+        <div class="col-md-6">
+            <span class="badge bg-secondary mb-3">{{ product.category.name }}</span>
+            <h1 class="mb-3">{{ product.name }}</h1>
+            <h3 class="text-primary mb-4">Rs. {{ "%.2f"|format(product.price) }}</h3>
+            
+            <p class="lead mb-4">{{ product.description }}</p>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Product Features</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="bi bi-check-circle text-success"></i> Premium Quality</li>
+                        <li><i class="bi bi-check-circle text-success"></i> Authentic Product</li>
+                        <li><i class="bi bi-check-circle text-success"></i> Fast Delivery</li>
+                        <li><i class="bi bi-check-circle text-success"></i> Secure Packaging</li>
+                    </ul>
+                </div>
+            </div>
+            
+            {% if current_user.is_authenticated %}
+            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                <div class="input-group mb-3" style="max-width: 200px;">
+                    <span class="input-group-text">Quantity</span>
+                    <input type="number" class="form-control" name="quantity" value="1" min="1" max="10">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-cart-plus"></i> Add to Cart
+                </button>
+            </form>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-info-circle"></i> Please <a href="{{ url_for('login') }}" class="alert-link">login</a> to add items to cart.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Related Products -->
+    <div class="mt-5">
+        <h3 class="mb-4">More from {{ product.category.name }}</h3>
+        <div class="row g-4">
+            {% for related in product.category.products[:3] %}
+                {% if related.id != product.id %}
+                <div class="col-md-4">
+                    <div class="card product-card h-100 shadow-sm hover-lift">
+                        <img src="{{ related.get_image_url() }}" class="card-img-top" alt="{{ related.name }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ related.name }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="h6 mb-0 text-primary">Rs. {{ "%.2f"|format(related.price) }}</span>
+                                <a href="{{ url_for('product', id=related.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

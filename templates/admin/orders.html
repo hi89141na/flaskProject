@@ -1,0 +1,157 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Manage Orders{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-box-seam"></i> Manage Orders</h2>
+</div>
+
+<!-- Revenue Card -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-0">Total Revenue</h6>
+                        <h2 class="mt-2 mb-0">Rs. {{ "%.2f"|format(total_revenue) }}</h2>
+                        <small>From Delivered Orders</small>
+                    </div>
+                    <div>
+                        <i class="bi bi-cash-stack" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card shadow">
+            <div class="card-body">
+                <h6 class="mb-3">Orders by Status</h6>
+                <div class="row text-center">
+                    <div class="col-3">
+                        <div class="p-2">
+                            <h4 class="text-warning">{{ status_counts['Pending'] }}</h4>
+                            <small>Pending</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2">
+                            <h4 class="text-info">{{ status_counts['Packed'] }}</h4>
+                            <small>Packed</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2">
+                            <h4 class="text-primary">{{ status_counts['Shipped'] }}</h4>
+                            <small>Shipped</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2">
+                            <h4 class="text-success">{{ status_counts['Delivered'] }}</h4>
+                            <small>Delivered</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Buttons -->
+<div class="mb-3">
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('orders.admin_orders', status='all') }}" 
+           class="btn btn-outline-secondary {% if status_filter == 'all' %}active{% endif %}">
+            All Orders
+        </a>
+        <a href="{{ url_for('orders.admin_orders', status='Pending') }}" 
+           class="btn btn-outline-warning {% if status_filter == 'Pending' %}active{% endif %}">
+            Pending ({{ status_counts['Pending'] }})
+        </a>
+        <a href="{{ url_for('orders.admin_orders', status='Packed') }}" 
+           class="btn btn-outline-info {% if status_filter == 'Packed' %}active{% endif %}">
+            Packed ({{ status_counts['Packed'] }})
+        </a>
+        <a href="{{ url_for('orders.admin_orders', status='Shipped') }}" 
+           class="btn btn-outline-primary {% if status_filter == 'Shipped' %}active{% endif %}">
+            Shipped ({{ status_counts['Shipped'] }})
+        </a>
+        <a href="{{ url_for('orders.admin_orders', status='Delivered') }}" 
+           class="btn btn-outline-success {% if status_filter == 'Delivered' %}active{% endif %}">
+            Delivered ({{ status_counts['Delivered'] }})
+        </a>
+    </div>
+</div>
+
+{% if orders %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td><strong>#{{ order.id }}</strong></td>
+                    <td>{{ order.name }}</td>
+                    <td>{{ order.email }}</td>
+                    <td>{{ order.phone }}</td>
+                    <td><strong>Rs. {{ "%.2f"|format(order.total_price) }}</strong></td>
+                    <td>
+                        <span class="badge bg-info">{{ order.payment_method }}</span>
+                    </td>
+                    <td>{{ order.order_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if order.status == 'Pending' %}
+                            <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                        {% elif order.status == 'Packed' %}
+                            <span class="badge bg-info">{{ order.status }}</span>
+                        {% elif order.status == 'Shipped' %}
+                            <span class="badge bg-primary">{{ order.status }}</span>
+                        {% elif order.status == 'Delivered' %}
+                            <span class="badge bg-success">{{ order.status }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('orders.admin_order_details', id=order.id) }}" 
+                           class="btn btn-sm btn-primary" title="View Details">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{{ url_for('orders.admin_delete_order', id=order.id) }}" 
+                           class="btn btn-sm btn-danger" 
+                           onclick="return confirm('Are you sure you want to delete this order? This action cannot be undone.')"
+                           title="Delete Order">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i> 
+        <strong>Total Orders:</strong> {{ orders|length }}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-inbox"></i> No orders found.
+    </div>
+{% endif %}
+{% endblock %}
